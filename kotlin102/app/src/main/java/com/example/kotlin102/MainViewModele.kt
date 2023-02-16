@@ -1,4 +1,9 @@
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.Call
@@ -14,28 +19,29 @@ class SecondFragmentViewModel : ViewModel() {
 
     private val api = retrofit.create(Api::class.java)
 
+    internal val pays = MutableLiveData<List<Country>?>()
+    val countries: MutableLiveData<List<Country>?> get() = pays
 
-    //
-    fun retrieveCountries() {
-        val call = api.getAllCountries()
-        call.enqueue(object : Callback<List<Country>> {
-            override fun onResponse(call: Call<List<Country>>, response: Response<List<Country>>) {
-                if (response.isSuccessful) {
-                    val countries = response.body()
-                    if (countries != null) {
-                        for (country in countries) {
-                            println(country)
-                        }
-                    }
-                }
-            }
-
-            override fun onFailure(call: Call<List<Country>>, t: Throwable) {
-                println("Request failed")
-            }
-        })
+    init {
+        getAllCountries()
     }
 
+    private fun getAllCountries() {
+        GlobalScope.launch(Dispatchers.Main) {
+            val response = api.getAllCountries()
+            response.enqueue(object : Callback<List<Country>> {
+                override fun onResponse(call: Call<List<Country>>, response: Response<List<Country>>) {
+                    if (response.isSuccessful) {
+                        countries.value = response.body()
+                    }
+                }
+
+                override fun onFailure(call: Call<List<Country>>, t: Throwable) {
+                    countries.value = null
+                }
+            })
+        }
+    }
 
     // interface de qui envoi une liste des pays
     interface Api {
@@ -46,7 +52,7 @@ class SecondFragmentViewModel : ViewModel() {
     // class des trucs a recuperer dans l'api
     data class Country(
         val name: String,
-        val capital: String,
+        val regionalbloc: String,
         val population: Int
     )
 
